@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets & local config
+.env
+*.local
+
+# Cached odds responses (keep dir, ignore contents except samples)
+data/cache/*
+!data/cache/.gitkeep
+
+# OS
+.DS_Store
