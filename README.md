@@ -12,6 +12,11 @@ single point projection.
 Long-term goal: a browser add-on that overlays these projections on the Yahoo
 Fantasy UI. For now it's an offline CLI.
 
+> **Maintainers / contributors:** start with [PROJECT_CONTEXT.md](PROJECT_CONTEXT.md)
+> for the full picture, then [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md),
+> [docs/CORRELATIONS.md](docs/CORRELATIONS.md), and [docs/DECISIONS.md](docs/DECISIONS.md).
+> This README is the user-facing summary.
+
 ## What it models (v1)
 
 Stats: **receptions, receiving yards, rushing yards, touchdowns**. (No QBs,
