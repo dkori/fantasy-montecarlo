@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Fantasy Monte Carlo — Head-to-Head</title>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js" charset="utf-8"></script>
+  <style>
+    :root { --ink: #1f2933; --muted: #6b7684; --line: #e3e8ee; --accent: #1f77b4; }
+    * { box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--ink); margin: 0; background: #fafbfc; }
+    header { padding: 20px 24px 8px; border-bottom: 1px solid var(--line); background: #fff; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: var(--muted); font-size: 13px; max-width: 760px; line-height: 1.5; }
+    #meta { color: var(--muted); font-size: 12px; margin-top: 8px; }
+    main { max-width: 980px; margin: 0 auto; padding: 20px 24px 60px; }
+    .picker { position: relative; margin-bottom: 12px; display: flex; gap: 8px; align-items: stretch; }
+    #owner-filter { flex: 0 0 auto; max-width: 220px; padding: 10px 12px; font-size: 14px;
+      border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
+    #search { flex: 1 1 auto; padding: 10px 12px; font-size: 15px; border: 1px solid var(--line);
+      border-radius: 8px; }
+    #matches { list-style: none; margin: 2px 0 0; padding: 0; position: absolute; z-index: 20;
+      top: 100%; left: 0; right: 0;
+      background: #fff; border: 1px solid var(--line); border-radius: 8px; width: 100%;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.08); max-height: 280px; overflow: auto; }
+    #matches li { padding: 8px 12px; cursor: pointer; font-size: 14px; display: flex;
+      justify-content: space-between; align-items: center; gap: 10px; }
+    #matches li:hover { background: #f1f5f9; }
+    .mini-owner { color: var(--muted); font-size: 11px; }
+    #chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; min-height: 10px; }
+    .chip { background: #fff; border: 1px solid var(--line); border-radius: 10px;
+      padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; min-width: 180px; }
+    .chip-name { font-weight: 600; font-size: 14px; }
+    .chip-stat { font-size: 12px; color: var(--muted); }
+    .chip-owner { font-size: 11px; color: #0a7d33; }
+    .chip-owner.fa { color: var(--muted); font-style: italic; }
+    .chip-x { align-self: flex-end; margin-top: -22px; border: none; background: none;
+      font-size: 18px; cursor: pointer; color: var(--muted); line-height: 1; }
+    #hint { color: var(--muted); font-size: 14px; padding: 24px 0; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+    .panel { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+    .panel h2 { font-size: 15px; margin: 0 0 2px; }
+    .panel .explain { font-size: 12.5px; color: var(--muted); margin: 0 0 8px; line-height: 1.45; }
+    .chart { width: 100%; height: 300px; }
+    .panel.disabled { opacity: 0.55; }
+    #diff-note { font-size: 12px; color: var(--muted); margin-top: 6px; }
+    .legend-key { font-size: 11.5px; color: var(--muted); margin-top: 10px; }
+    .legend-key b { color: var(--ink); }
+    footer { color: var(--muted); font-size: 11.5px; max-width: 980px; margin: 0 auto;
+      padding: 0 24px 40px; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Fantasy Monte Carlo — Head-to-Head</h1>
+    <div class="sub">
+      Each player's fantasy-point outcome is a <b>distribution</b> reconstructed from
+      sportsbook player-prop odds (de-vigged, Monte-Carlo-simulated) — not a single
+      number. Pick two players to compare their full ranges, with Yahoo's point
+      projection and your league's owner shown alongside. Use the owner dropdown to
+      narrow the search to one manager's roster.
+    </div>
+    <div id="meta"></div>
+  </header>
+
+  <main>
+    <div class="picker">
+      <select id="owner-filter" title="Filter the player list by fantasy owner">
+        <option value="__all__">All owners</option>
+      </select>
+      <input id="search" list="allnames" autocomplete="off"
+             placeholder="Search a player (pick 2 to compare)…" />
+      <datalist id="allnames"></datalist>
+      <ul id="matches"></ul>
+    </div>
+    <div id="chips"></div>
+    <div id="hint">Search and pick two players to compare head-to-head.</div>
+
+    <div id="charts" style="display:none;">
+      <div class="grid">
+        <div class="panel">
+          <h2>1 · Density (PDF)</h2>
+          <p class="explain">The shape of each player's likely scores: taller = more
+            likely, wider = less predictable. Best single view for separation.</p>
+          <div id="chart-density" class="chart"></div>
+        </div>
+        <div class="panel">
+          <h2>2 · Standard CDF</h2>
+          <p class="explain">The chance a player scores at or below any point total;
+            a steeper curve = more predictable. Good for "will they clear my flex's floor?"</p>
+          <div id="chart-cdf-std" class="chart"></div>
+        </div>
+        <div class="panel">
+          <h2>3 · Points by percentile (flipped CDF)</h2>
+          <p class="explain">Read any percentile: the vertical gap between the two
+            curves is how many points separate them at that outcome. Good for comparing
+            floors (p10) and ceilings (p90) directly.</p>
+          <div id="chart-cdf-flipped" class="chart"></div>
+        </div>
+        <div class="panel" id="diff-panel">
+          <h2>4 · Difference (head-to-head)</h2>
+          <p class="explain">How many points the higher-projected player is ahead by at
+            each percentile; where it dips below zero, the other player actually wins
+            (e.g. a higher floor).</p>
+          <div id="chart-diff" class="chart"></div>
+          <div id="diff-note"></div>
+        </div>
+      </div>
+      <div class="legend-key">
+        Overlays: <b>dotted vertical line</b> = our simulated mean · <b>dashed vertical
+        line</b> = Yahoo's projection (only for rostered players) · the owner badge on each
+        chip is the league team that rosters them (blank = free agent).
+      </div>
+    </div>
+  </main>
+
+  <footer>
+    Built from one static JSON (no server). Projections come from a single book's
+    de-vigged player props, 0.5-PPR, correlated Monte-Carlo. Free agents appear with our
+    projection only (Yahoo doesn't project unrostered players). Kickers and defenses are
+    not modeled.
+  </footer>
+
+  <script src="charts.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
