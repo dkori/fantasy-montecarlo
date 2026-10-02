@@ -207,10 +207,10 @@ function renderDensity(series) {
   });
   const { shapes, annotations } = overlayShapes(series);
   Plotly.newPlot('chart-density', traces, {
-    margin: { t: 10, r: 10, b: 40, l: 50 },
+    margin: { t: 10, r: 10, b: 72, l: 50 },
     xaxis: { title: 'fantasy points' }, yaxis: { title: 'density' },
     template: 'plotly_white', hovermode: 'x unified', shapes, annotations,
-    legend: { orientation: 'h', y: -0.2 },
+    legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
 }
 
@@ -228,11 +228,11 @@ function renderCdfStd(series) {
   [0.1, 0.5, 0.9].forEach((p) => shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1,
     y0: p, y1: p, line: { color: '#ccc', width: 1, dash: 'dot' } }));
   Plotly.newPlot('chart-cdf-std', traces, {
-    margin: { t: 10, r: 10, b: 40, l: 50 },
+    margin: { t: 10, r: 10, b: 72, l: 50 },
     xaxis: { title: 'fantasy points' },
     yaxis: { title: 'P(score ≤ x)', range: [0, 1] },
     template: 'plotly_white', hovermode: 'x unified', shapes, annotations,
-    legend: { orientation: 'h', y: -0.2 },
+    legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
 }
 
@@ -254,11 +254,11 @@ function renderCdfFlipped(series) {
   [10, 50, 90].forEach((p) => shapes.push({ type: 'line', yref: 'paper', x0: p, x1: p,
     y0: 0, y1: 1, line: { color: '#ccc', width: 1, dash: 'dot' } }));
   Plotly.newPlot('chart-cdf-flipped', traces, {
-    margin: { t: 10, r: 10, b: 40, l: 50 },
+    margin: { t: 10, r: 10, b: 72, l: 50 },
     xaxis: { title: 'percentile', range: [0, 100] },
     yaxis: { title: 'fantasy points' },
     template: 'plotly_white', hovermode: 'x unified', shapes,
-    legend: { orientation: 'h', y: -0.2 },
+    legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
 }
 
@@ -284,7 +284,7 @@ function renderDiff(series) {
   [10, 50, 90].forEach((p) => shapes.push({ type: 'line', yref: 'paper', x0: p, x1: p,
     y0: 0, y1: 1, line: { color: '#ccc', width: 1, dash: 'dot' } }));
   Plotly.newPlot('chart-diff', [trace], {
-    margin: { t: 10, r: 10, b: 40, l: 50 },
+    margin: { t: 10, r: 10, b: 72, l: 50 },
     xaxis: { title: 'percentile', range: [0, 100] },
     yaxis: { title: `points: ${hiName} − ${loName}` },
     template: 'plotly_white', hovermode: 'x unified', showlegend: false, shapes,
