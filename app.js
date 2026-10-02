@@ -165,32 +165,6 @@ function renderChips() {
     b.addEventListener('click', () => removePlayer(b.dataset.name)));
 }
 
-/* --- overlays helper: vertical our-mean + Yahoo markers --------------- */
-function overlayShapes(series, yRange) {
-  const shapes = [];
-  const annotations = [];
-  series.forEach((s) => {
-    const color = rgb(s.i);
-    // our mean (solid-ish dotted)
-    shapes.push(vline(s.rec.mean, color, 'dot'));
-    annotations.push(vlabel(s.rec.mean, `${s.name.split(' ').slice(-1)} mean`, color, yRange, 1));
-    // Yahoo projection (dashed) if present
-    if (s.rec.yahoo_proj != null) {
-      shapes.push(vline(s.rec.yahoo_proj, color, 'dash'));
-      annotations.push(vlabel(s.rec.yahoo_proj, `${s.name.split(' ').slice(-1)} Yahoo`, color, yRange, 0.88));
-    }
-  });
-  return { shapes, annotations };
-}
-function vline(x, color, dash) {
-  return { type: 'line', x0: x, x1: x, yref: 'paper', y0: 0, y1: 1,
-    line: { color, width: 1.2, dash } };
-}
-function vlabel(x, text, color, _r, ypaper) {
-  return { x, xref: 'x', y: ypaper, yref: 'paper', text, showarrow: false,
-    font: { size: 10, color }, bgcolor: 'rgba(255,255,255,0.6)' };
-}
-
 /* --- the four charts -------------------------------------------------- */
 
 function renderDensity(series) {
@@ -205,11 +179,12 @@ function renderDensity(series) {
       hovertemplate: '%{x:.1f} pts<br>%{customdata:.0f}th pctile<extra>' + s.name + '</extra>',
     };
   });
-  const { shapes, annotations } = overlayShapes(series);
+  // No mean/Yahoo vertical lines here — 4 lines in a tight range looked
+  // cluttered. The mean + Yahoo numbers live on each player's chip instead.
   Plotly.newPlot('chart-density', traces, {
     margin: { t: 10, r: 10, b: 72, l: 50 },
     xaxis: { title: 'fantasy points' }, yaxis: { title: 'density' },
-    template: 'plotly_white', hovermode: 'x unified', shapes, annotations,
+    template: 'plotly_white', hovermode: 'x unified',
     legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
 }
@@ -223,15 +198,16 @@ function renderCdfStd(series) {
       hovertemplate: '%{x:.1f} pts<br>P(≤)=%{y:.2f}<extra>' + s.name + '</extra>',
     };
   });
-  const { shapes, annotations } = overlayShapes(series);
-  // horizontal grid at 0.1/0.5/0.9
+  // Keep the horizontal probability grid (0.1/0.5/0.9) but drop the vertical
+  // mean/Yahoo lines — they cluttered the tight x-range. Numbers are on chips.
+  const shapes = [];
   [0.1, 0.5, 0.9].forEach((p) => shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1,
     y0: p, y1: p, line: { color: '#ccc', width: 1, dash: 'dot' } }));
   Plotly.newPlot('chart-cdf-std', traces, {
     margin: { t: 10, r: 10, b: 72, l: 50 },
     xaxis: { title: 'fantasy points' },
     yaxis: { title: 'P(score ≤ x)', range: [0, 1] },
-    template: 'plotly_white', hovermode: 'x unified', shapes, annotations,
+    template: 'plotly_white', hovermode: 'x unified', shapes,
     legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
 }
