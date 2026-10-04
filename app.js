@@ -33,8 +33,9 @@ function renderMeta() {
 function wireControls() {
   const input = document.getElementById('search');
   const list = document.getElementById('matches');
-  const dl = document.getElementById('allnames');
   const ownerSel = document.getElementById('owner-filter');
+  const trigger = document.getElementById('player-trigger');
+  const panel = document.getElementById('player-panel');
 
   // Populate the owner dropdown: "All", each distinct owner (sorted), then
   // "Free agents" (players with no owner).
@@ -54,54 +55,57 @@ function wireControls() {
     return NAMES.filter((n) => DATA.players[n].owner === v);
   }
 
-  function refreshDatalist() {
-    dl.innerHTML = candidates().map((n) => `<option value="${escapeHtml(n)}"></option>`).join('');
-  }
-  refreshDatalist();
-
+  // Render the full candidate list (filtered by the in-panel search text).
+  // With the dropdown model we always show the list; typing just narrows it.
   function refreshMatches() {
     const pool = candidates();
     const q = input.value.trim().toLowerCase();
     let hits;
     if (!q) {
-      // With an owner selected, show that owner's whole roster up front; with
-      // "All", keep the list quiet until the user types.
-      hits = ownerSel.value === '__all__' ? [] : pool.slice(0, 20);
+      hits = pool.slice(0, 300); // whole (owner-filtered) list, tap to pick
     } else {
       const starts = pool.filter((n) => n.toLowerCase().startsWith(q));
       const contains = pool.filter((n) => n.toLowerCase().includes(q) && !starts.includes(n));
-      hits = starts.concat(contains).slice(0, 12);
+      hits = starts.concat(contains).slice(0, 60);
     }
-    list.innerHTML = hits
-      .map((n) => `<li data-name="${escapeHtml(n)}">${escapeHtml(n)}${badge(n)}</li>`)
-      .join('');
+    list.innerHTML = hits.length
+      ? hits.map((n) => `<li data-name="${escapeHtml(n)}">${escapeHtml(n)}${badge(n)}</li>`).join('')
+      : '<li class="empty">no players</li>';
   }
 
-  ownerSel.addEventListener('change', () => { refreshDatalist(); refreshMatches(); });
+  function openPanel() {
+    panel.classList.add('open');
+    trigger.setAttribute('aria-expanded', 'true');
+    refreshMatches();
+    // NOTE: intentionally do NOT focus the search input here — on mobile that
+    // would pop the keyboard the moment the dropdown opens. The user taps the
+    // search field themselves if they want to type.
+  }
+  function closePanel() {
+    panel.classList.remove('open');
+    trigger.setAttribute('aria-expanded', 'false');
+  }
+  function togglePanel() {
+    if (panel.classList.contains('open')) closePanel(); else openPanel();
+  }
+
+  trigger.addEventListener('click', togglePanel);
+  ownerSel.addEventListener('change', () => { input.value = ''; if (panel.classList.contains('open')) refreshMatches(); });
   input.addEventListener('input', refreshMatches);
-  input.addEventListener('focus', refreshMatches);
 
   list.addEventListener('click', (e) => {
-    const li = e.target.closest('li');
+    const li = e.target.closest('li[data-name]');
     if (!li) return;
     addPlayer(li.dataset.name);
     input.value = '';
-    list.innerHTML = '';
+    closePanel();
   });
 
-  // Enter picks the exact-name match if valid (searched across ALL players so a
-  // typed full name works even if the owner filter would hide it).
-  input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') {
-      const exact = NAMES.find((n) => n.toLowerCase() === input.value.trim().toLowerCase());
-      if (exact) { addPlayer(exact); input.value = ''; list.innerHTML = ''; }
-    }
-  });
-
-  // Dismiss the dropdown on outside click.
+  // Close on outside click / Escape.
   document.addEventListener('click', (e) => {
-    if (!e.target.closest('.picker')) list.innerHTML = '';
+    if (!e.target.closest('.player-select')) closePanel();
   });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePanel(); });
 }
 
 function badge(name) {
@@ -127,6 +131,12 @@ function removePlayer(name) {
 
 function render() {
   renderChips();
+  const label = document.getElementById('player-trigger-label');
+  if (label) {
+    label.textContent = selected.length === 0
+      ? 'Select a player…'
+      : (selected.length === 1 ? 'Add a second player…' : 'Replace a player…');
+  }
   const charts = document.getElementById('charts');
   const hint = document.getElementById('hint');
   if (selected.length === 0) {

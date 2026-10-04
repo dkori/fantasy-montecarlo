@@ -15,18 +15,27 @@
     .sub { color: var(--muted); font-size: 13px; max-width: 760px; line-height: 1.5; }
     #meta { color: var(--muted); font-size: 12px; margin-top: 8px; }
     main { max-width: 980px; margin: 0 auto; padding: 20px 24px 60px; }
-    .picker { position: relative; margin-bottom: 12px; display: flex; gap: 8px; align-items: stretch; }
-    #owner-filter { flex: 0 0 auto; max-width: 220px; padding: 10px 12px; font-size: 14px;
+    .picker { position: relative; margin-bottom: 12px; display: flex; flex-direction: column;
+      gap: 8px; align-items: stretch; }
+    #owner-filter { width: 100%; padding: 10px 12px; font-size: 14px;
       border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); }
-    #search { flex: 1 1 auto; padding: 10px 12px; font-size: 15px; border: 1px solid var(--line);
-      border-radius: 8px; }
-    #matches { list-style: none; margin: 2px 0 0; padding: 0; position: absolute; z-index: 20;
-      top: 100%; left: 0; right: 0;
-      background: #fff; border: 1px solid var(--line); border-radius: 8px; width: 100%;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.08); max-height: 280px; overflow: auto; }
+    .player-select { position: relative; }
+    #player-trigger { width: 100%; text-align: left; padding: 10px 12px; font-size: 15px;
+      border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--muted);
+      cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+    #player-trigger::after { content: '▾'; color: var(--muted); font-size: 12px; }
+    #player-panel { display: none; position: absolute; z-index: 20; top: 100%; left: 0; right: 0;
+      margin-top: 4px; background: #fff; border: 1px solid var(--line); border-radius: 8px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.1); overflow: hidden; }
+    #player-panel.open { display: block; }
+    #search { width: 100%; padding: 10px 12px; font-size: 15px; border: none;
+      border-bottom: 1px solid var(--line); border-radius: 0; outline: none; }
+    #matches { list-style: none; margin: 0; padding: 0;
+      background: #fff; max-height: 260px; overflow: auto; }
     #matches li { padding: 8px 12px; cursor: pointer; font-size: 14px; display: flex;
       justify-content: space-between; align-items: center; gap: 10px; }
     #matches li:hover { background: #f1f5f9; }
+    #matches li.empty { color: var(--muted); font-style: italic; cursor: default; }
     .mini-owner { color: var(--muted); font-size: 11px; }
     #chips { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; min-height: 10px; }
     .chip { background: #fff; border: 1px solid var(--line); border-radius: 10px;
@@ -70,10 +79,16 @@
       <select id="owner-filter" title="Filter the player list by fantasy owner">
         <option value="__all__">All owners</option>
       </select>
-      <input id="search" list="allnames" autocomplete="off"
-             placeholder="Search a player (pick 2 to compare)…" />
-      <datalist id="allnames"></datalist>
-      <ul id="matches"></ul>
+      <div class="player-select">
+        <button id="player-trigger" type="button" aria-haspopup="listbox" aria-expanded="false">
+          <span id="player-trigger-label">Select a player…</span>
+        </button>
+        <div id="player-panel">
+          <input id="search" type="text" autocomplete="off" inputmode="search"
+                 placeholder="Type to filter…" />
+          <ul id="matches"></ul>
+        </div>
+      </div>
     </div>
     <div id="chips"></div>
     <div id="hint">Search and pick two players to compare head-to-head.</div>
