@@ -7,7 +7,16 @@ let DATA = null;        // the loaded demo payload
 let NAMES = [];         // sorted selectable player names
 let selected = [];      // up to 2 names
 
-const PLOTLY_CONFIG = { displayModeBar: false, responsive: true };
+// Hover stays on (the unified spike line + value tooltip come from the per-chart
+// hovermode:'x unified'); zoom/pan is disabled so a stray drag or scroll on
+// mobile can't zoom the plot. scrollZoom off + per-axis fixedrange:true (set in
+// each layout) kill zoom entirely; doubleClick off avoids an accidental reset.
+const PLOTLY_CONFIG = {
+  displayModeBar: false,
+  responsive: true,
+  scrollZoom: false,
+  doubleClick: false,
+};
 
 async function boot() {
   const res = await fetch('data/demo_week4.json');
@@ -193,8 +202,9 @@ function renderDensity(series) {
   // cluttered. The mean + Yahoo numbers live on each player's chip instead.
   Plotly.newPlot('chart-density', traces, {
     margin: { t: 10, r: 10, b: 72, l: 50 },
-    xaxis: { title: 'fantasy points' }, yaxis: { title: 'density' },
-    template: 'plotly_white', hovermode: 'x unified',
+    xaxis: { title: 'fantasy points', fixedrange: true },
+    yaxis: { title: 'density', fixedrange: true },
+    template: 'plotly_white', hovermode: 'x unified', dragmode: false,
     legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
 }
@@ -214,9 +224,9 @@ function renderCdfStd(series) {
     y0: p, y1: p, line: { color: '#ccc', width: 1, dash: 'dot' } }));
   Plotly.newPlot('chart-cdf-std', traces, {
     margin: { t: 10, r: 10, b: 72, l: 50 },
-    xaxis: { title: 'fantasy points' },
-    yaxis: { title: 'P(score ≥ x)', range: [0, 1] },
-    template: 'plotly_white', hovermode: 'x unified', shapes,
+    xaxis: { title: 'fantasy points', fixedrange: true },
+    yaxis: { title: 'P(score ≥ x)', range: [0, 1], fixedrange: true },
+    template: 'plotly_white', hovermode: 'x unified', dragmode: false, shapes,
     legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
 }
@@ -241,9 +251,9 @@ function renderCdfFlipped(series) {
     y0: 0, y1: 1, line: { color: '#ccc', width: 1, dash: 'dot' } }));
   Plotly.newPlot('chart-cdf-flipped', traces, {
     margin: { t: 10, r: 10, b: 72, l: 50 },
-    xaxis: { title: 'probability of scoring at least y (%)', range: [0, 100] },
-    yaxis: { title: 'fantasy points' },
-    template: 'plotly_white', hovermode: 'x unified', shapes,
+    xaxis: { title: 'probability of scoring at least y (%)', range: [0, 100], fixedrange: true },
+    yaxis: { title: 'fantasy points', fixedrange: true },
+    template: 'plotly_white', hovermode: 'x unified', dragmode: false, shapes,
     legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
 }
@@ -271,9 +281,9 @@ function renderDiff(series) {
     y0: 0, y1: 1, line: { color: '#ccc', width: 1, dash: 'dot' } }));
   Plotly.newPlot('chart-diff', [trace], {
     margin: { t: 10, r: 10, b: 72, l: 50 },
-    xaxis: { title: 'percentile', range: [0, 100] },
-    yaxis: { title: `points: ${hiName} − ${loName}` },
-    template: 'plotly_white', hovermode: 'x unified', showlegend: false, shapes,
+    xaxis: { title: 'percentile', range: [0, 100], fixedrange: true },
+    yaxis: { title: `points: ${hiName} − ${loName}`, fixedrange: true },
+    template: 'plotly_white', hovermode: 'x unified', dragmode: false, showlegend: false, shapes,
   }, PLOTLY_CONFIG);
   document.getElementById('diff-note').textContent =
     `Positive = ${hiName} (higher mean) ahead at that percentile. ` +
