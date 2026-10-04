@@ -6,6 +6,7 @@
 let DATA = null;        // the loaded demo payload
 let NAMES = [];         // sorted selectable player names
 let selected = [];      // up to 2 names
+let colorOf = {};       // name -> stable palette slot (0/1) while selected
 
 // Hover stays on (the unified spike line + value tooltip come from the per-chart
 // hovermode:'x unified'); zoom/pan is disabled so a stray drag or scroll on
@@ -127,14 +128,22 @@ function addPlayer(name) {
   if (selected.includes(name)) return;
   if (selected.length >= 2) {
     // Hard cap at 2: replace the oldest so the UX stays a head-to-head.
-    selected.shift();
+    const dropped = selected.shift();
+    delete colorOf[dropped];
   }
+  // Assign the lowest free palette slot (0 or 1) so a player keeps the SAME
+  // color for as long as they're selected — removing the other player no longer
+  // swaps the survivor's color.
+  const used = new Set(Object.values(colorOf));
+  const slot = used.has(0) ? 1 : 0;
+  colorOf[name] = slot;
   selected.push(name);
   render();
 }
 
 function removePlayer(name) {
   selected = selected.filter((n) => n !== name);
+  delete colorOf[name];
   render();
 }
 
@@ -158,7 +167,7 @@ function render() {
   if (selected.length === 1) hint.textContent = 'Pick a second player to unlock the difference chart.';
   charts.style.display = 'block';
 
-  const series = selected.map((n, i) => ({ name: n, rec: DATA.players[n], i }));
+  const series = selected.map((n) => ({ name: n, rec: DATA.players[n], i: colorOf[n] }));
   renderCdfStd(series);
   renderDiff(series);
   renderDensity(series);
@@ -277,11 +286,14 @@ function renderDiff(series) {
     hoverinfo: 'skip',
   };
   // An invisible trace carrying the true signed diff so hover shows the real
-  // value (positive = hi ahead, negative = lo ahead).
+  // value (positive = hi ahead, negative = lo ahead). Round the data itself so
+  // the x-unified hover box shows clean values (not float noise like 99.900001).
   const hoverTrace = {
-    x, y: diff, mode: 'lines', line: { color: 'rgba(0,0,0,0)', width: 0 },
+    x: x.map((v) => Math.round(v)),
+    y: diff.map((v) => Math.round(v * 10) / 10),
+    mode: 'lines', line: { color: 'rgba(0,0,0,0)', width: 0 },
     name: `${hiName} − ${loName}`, showlegend: false,
-    hovertemplate: '%{x:.0f}th pctile<br>%{y:+.1f} pts<extra>' + hiName + ' − ' + loName + '</extra>',
+    hovertemplate: '%{x}th pctile<br>%{y:+.1f} pts<extra>' + hiName + ' − ' + loName + '</extra>',
   };
 
   // Symmetric y-range so the zero line is always centered and BOTH halves are
