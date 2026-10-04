@@ -155,7 +155,7 @@ function renderChips() {
       const yp = r.yahoo_proj != null ? `Yahoo ${r.yahoo_proj.toFixed(1)}` : 'no Yahoo proj';
       return `<div class="chip">
         <span class="chip-name">${escapeHtml(n)}</span>
-        <span class="chip-stat">ours ${r.mean.toFixed(1)} · ${yp}</span>
+        <span class="chip-stat">ours: mean ${r.mean.toFixed(1)} · med ${r.median.toFixed(1)} · ${yp}</span>
         ${owner}
         <button data-name="${escapeHtml(n)}" class="chip-x">×</button>
       </div>`;
@@ -191,22 +191,21 @@ function renderDensity(series) {
 
 function renderCdfStd(series) {
   const traces = series.map((s) => {
-    const { x, y } = cdfStdXY(s.rec);
+    const { x, y } = survivalXY(s.rec);
     return {
       x, y, mode: 'lines', name: `${s.name} (mean ${s.rec.mean.toFixed(1)})`,
       line: { color: rgb(s.i), width: 2 },
-      hovertemplate: '%{x:.1f} pts<br>P(≤)=%{y:.2f}<extra>' + s.name + '</extra>',
+      hovertemplate: '%{x:.1f} pts<br>P(≥)=%{y:.2f}<extra>' + s.name + '</extra>',
     };
   });
-  // Keep the horizontal probability grid (0.1/0.5/0.9) but drop the vertical
-  // mean/Yahoo lines — they cluttered the tight x-range. Numbers are on chips.
+  // Horizontal probability grid at 0.1/0.5/0.9 for reference.
   const shapes = [];
   [0.1, 0.5, 0.9].forEach((p) => shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1,
     y0: p, y1: p, line: { color: '#ccc', width: 1, dash: 'dot' } }));
   Plotly.newPlot('chart-cdf-std', traces, {
     margin: { t: 10, r: 10, b: 72, l: 50 },
     xaxis: { title: 'fantasy points' },
-    yaxis: { title: 'P(score ≤ x)', range: [0, 1] },
+    yaxis: { title: 'P(score ≥ x)', range: [0, 1] },
     template: 'plotly_white', hovermode: 'x unified', shapes,
     legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
@@ -214,24 +213,25 @@ function renderCdfStd(series) {
 
 function renderCdfFlipped(series) {
   const traces = series.map((s) => {
-    const { x, y } = cdfFlippedXY(s.rec);
+    const { x, y } = flippedSurvivalXY(s.rec);
     return {
       x, y, mode: 'lines', name: `${s.name} (mean ${s.rec.mean.toFixed(1)})`,
       line: { color: rgb(s.i), width: 2 },
-      hovertemplate: '%{x:.0f}th pctile<br>%{y:.1f} pts<extra>' + s.name + '</extra>',
+      hovertemplate: 'P(≥)=%{x:.0f}%<br>%{y:.1f} pts<extra>' + s.name + '</extra>',
     };
   });
   const shapes = [];
-  // our-mean as HORIZONTAL lines here (y is points)
+  // median as HORIZONTAL lines (y is points)
   series.forEach((s) => {
     shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, y0: s.rec.median, y1: s.rec.median,
       line: { color: rgb(s.i), width: 1, dash: 'dot' } });
   });
+  // vertical refs at the 10/50/90% "at least" probabilities
   [10, 50, 90].forEach((p) => shapes.push({ type: 'line', yref: 'paper', x0: p, x1: p,
     y0: 0, y1: 1, line: { color: '#ccc', width: 1, dash: 'dot' } }));
   Plotly.newPlot('chart-cdf-flipped', traces, {
     margin: { t: 10, r: 10, b: 72, l: 50 },
-    xaxis: { title: 'percentile', range: [0, 100] },
+    xaxis: { title: 'probability of scoring at least y (%)', range: [0, 100] },
     yaxis: { title: 'fantasy points' },
     template: 'plotly_white', hovermode: 'x unified', shapes,
     legend: { orientation: 'h', y: -0.3, yanchor: 'top' },

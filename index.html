@@ -81,36 +81,43 @@
     <div id="charts" style="display:none;">
       <div class="grid">
         <div class="panel">
-          <h2>1 · Density (PDF)</h2>
-          <p class="explain">The shape of each player's likely scores: taller = more
-            likely, wider = less predictable. Best single view for separation.</p>
-          <div id="chart-density" class="chart"></div>
-        </div>
-        <div class="panel">
-          <h2>2 · Standard CDF</h2>
-          <p class="explain">The chance a player scores at or below any point total;
-            a steeper curve = more predictable. Good for "will they clear my flex's floor?"</p>
+          <h2>1 · Probability of scoring at least X</h2>
+          <p class="explain">For any point total on the x-axis, the curve height is that
+            player's chance of hitting <b>that many points or more</b>. Higher/further-right
+            curve = better odds at that threshold. Good for "what's the chance they clear
+            the ~12 I need from my flex?"</p>
           <div id="chart-cdf-std" class="chart"></div>
         </div>
         <div class="panel">
-          <h2>3 · Points by percentile (flipped CDF)</h2>
-          <p class="explain">Read any percentile: the vertical gap between the two
-            curves is how many points separate them at that outcome. Good for comparing
-            floors (p10) and ceilings (p90) directly.</p>
+          <h2>2 · Points you can expect at a given confidence</h2>
+          <p class="explain">Read it the other way: pick a probability on the x-axis and
+            the curve shows the points each player reaches <b>with at least that
+            likelihood</b>. At 90% you're reading a safe floor; at 10%, a boom-game ceiling.
+            The vertical gap between curves is the points edge at that confidence.</p>
           <div id="chart-cdf-flipped" class="chart"></div>
         </div>
         <div class="panel" id="diff-panel">
-          <h2>4 · Difference (head-to-head)</h2>
+          <h2>3 · Difference (head-to-head)</h2>
           <p class="explain">How many points the higher-projected player is ahead by at
             each percentile; where it dips below zero, the other player actually wins
             (e.g. a higher floor).</p>
           <div id="chart-diff" class="chart"></div>
           <div id="diff-note"></div>
         </div>
+        <div class="panel">
+          <h2>4 · Density (shape only)</h2>
+          <p class="explain">The shape of each player's outcome distribution: taller = more
+            likely, wider = less predictable. This illustrates the distributional
+            differences well, but is <b>less directly useful for roster decisions</b> — the
+            points where the curves cross aren't actionable. Charts 1–2 are the ones to
+            reason from.</p>
+          <div id="chart-density" class="chart"></div>
+        </div>
       </div>
       <div class="legend-key">
-        Each player's chip shows <b>our simulated mean</b> and <b>Yahoo's projection</b>
-        (for rostered players), plus the league team that rosters them (blank = free agent).
+        Each player's chip shows <b>our mean</b> (maximize expected score) and <b>our
+        median</b> (the "just hope they hit it" number), plus <b>Yahoo's projection</b>
+        (for rostered players) and the league team that rosters them (blank = free agent).
       </div>
     </div>
   </main>

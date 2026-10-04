@@ -105,6 +105,26 @@ function cdfStdXY(rec) {
   return { x: values, y: levels };
 }
 
+/* --- survival / "at least" (x=points, y=P(score >= x)) ---------------- */
+// Complement of the standard CDF: y = 1 - level. Downward-sloping. Reads
+// "at this score, the probability of scoring AT LEAST that many points."
+function survivalXY(rec) {
+  const levels = rec.quantiles.levels.map(Number);
+  const values = rec.quantiles.values.map(Number);
+  return { x: values, y: levels.map((l) => 1 - l) };
+}
+
+/* --- flipped survival (x=P(>=) percent, y=points) --------------------- */
+// The flipped (quantile-function) chart re-expressed in "at least" terms:
+// x = P(score >= y) as a percent (= (1 - level)*100), y = points. Reading
+// across: "the points this player hits with at least X% probability." x runs
+// high-prob/low-score (left) to low-prob/high-score (right) once reversed.
+function flippedSurvivalXY(rec) {
+  const levels = rec.quantiles.levels.map(Number);
+  const values = rec.quantiles.values.map(Number);
+  return { x: levels.map((l) => (1 - l) * 100), y: values };
+}
+
 /* --- two-player difference (higher-mean positive) --------------------- */
 // Port of diff_series. series = [{name, rec}, {name, rec}].
 function diffSeries(series) {
