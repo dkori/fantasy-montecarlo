@@ -159,10 +159,9 @@ function render() {
   charts.style.display = 'block';
 
   const series = selected.map((n, i) => ({ name: n, rec: DATA.players[n], i }));
-  renderDensity(series);
   renderCdfStd(series);
-  renderCdfFlipped(series);
   renderDiff(series);
+  renderDensity(series);
 }
 
 function renderChips() {
@@ -222,38 +221,22 @@ function renderCdfStd(series) {
   const shapes = [];
   [0.1, 0.5, 0.9].forEach((p) => shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1,
     y0: p, y1: p, line: { color: '#ccc', width: 1, dash: 'dot' } }));
+  // Per-player median: a vertical line at each player's median point total
+  // (where their survival curve crosses P = 0.5). One line per player, colored.
+  series.forEach((s) => {
+    shapes.push({ type: 'line', x0: s.rec.median, x1: s.rec.median, yref: 'paper', y0: 0, y1: 1,
+      line: { color: rgb(s.i), width: 1.2, dash: 'dot' } });
+  });
+  const annotations = series.map((s) => ({
+    x: s.rec.median, xref: 'x', y: 1, yref: 'paper',
+    text: `${s.name.split(' ').slice(-1)} med`, showarrow: false,
+    font: { size: 10, color: rgb(s.i) }, bgcolor: 'rgba(255,255,255,0.6)', yanchor: 'bottom',
+  }));
   Plotly.newPlot('chart-cdf-std', traces, {
-    margin: { t: 10, r: 10, b: 72, l: 50 },
+    margin: { t: 18, r: 10, b: 72, l: 50 },
     xaxis: { title: 'fantasy points', fixedrange: true },
     yaxis: { title: 'P(score ≥ x)', range: [0, 1], fixedrange: true },
-    template: 'plotly_white', hovermode: 'x unified', dragmode: false, shapes,
-    legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
-  }, PLOTLY_CONFIG);
-}
-
-function renderCdfFlipped(series) {
-  const traces = series.map((s) => {
-    const { x, y } = flippedSurvivalXY(s.rec);
-    return {
-      x, y, mode: 'lines', name: `${s.name} (mean ${s.rec.mean.toFixed(1)})`,
-      line: { color: rgb(s.i), width: 2 },
-      hovertemplate: 'P(≥)=%{x:.0f}%<br>%{y:.1f} pts<extra>' + s.name + '</extra>',
-    };
-  });
-  const shapes = [];
-  // median as HORIZONTAL lines (y is points)
-  series.forEach((s) => {
-    shapes.push({ type: 'line', xref: 'paper', x0: 0, x1: 1, y0: s.rec.median, y1: s.rec.median,
-      line: { color: rgb(s.i), width: 1, dash: 'dot' } });
-  });
-  // vertical refs at the 10/50/90% "at least" probabilities
-  [10, 50, 90].forEach((p) => shapes.push({ type: 'line', yref: 'paper', x0: p, x1: p,
-    y0: 0, y1: 1, line: { color: '#ccc', width: 1, dash: 'dot' } }));
-  Plotly.newPlot('chart-cdf-flipped', traces, {
-    margin: { t: 10, r: 10, b: 72, l: 50 },
-    xaxis: { title: 'probability of scoring at least y (%)', range: [0, 100], fixedrange: true },
-    yaxis: { title: 'fantasy points', fixedrange: true },
-    template: 'plotly_white', hovermode: 'x unified', dragmode: false, shapes,
+    template: 'plotly_white', hovermode: 'x unified', dragmode: false, shapes, annotations,
     legend: { orientation: 'h', y: -0.3, yanchor: 'top' },
   }, PLOTLY_CONFIG);
 }

@@ -99,20 +99,13 @@
           <h2>1 · Probability of scoring at least X</h2>
           <p class="explain">For any point total on the x-axis, the curve height is that
             player's chance of hitting <b>that many points or more</b>. Higher/further-right
-            curve = better odds at that threshold. Good for "what's the chance they clear
-            the ~12 I need from my flex?"</p>
+            curve = better odds at that threshold. The dotted vertical line marks each
+            player's <b>median</b> (the point total they clear about half the time). Good
+            for "what's the chance they clear the ~12 I need from my flex?"</p>
           <div id="chart-cdf-std" class="chart"></div>
         </div>
-        <div class="panel">
-          <h2>2 · Points you can expect at a given confidence</h2>
-          <p class="explain">Read it the other way: pick a probability on the x-axis and
-            the curve shows the points each player reaches <b>with at least that
-            likelihood</b>. At 90% you're reading a safe floor; at 10%, a boom-game ceiling.
-            The vertical gap between curves is the points edge at that confidence.</p>
-          <div id="chart-cdf-flipped" class="chart"></div>
-        </div>
         <div class="panel" id="diff-panel">
-          <h2>3 · Difference (head-to-head)</h2>
+          <h2>2 · Difference (head-to-head)</h2>
           <p class="explain">How many points the higher-projected player is ahead by at
             each percentile; where it dips below zero, the other player actually wins
             (e.g. a higher floor).</p>
@@ -120,7 +113,7 @@
           <div id="diff-note"></div>
         </div>
         <div class="panel">
-          <h2>4 · Density (shape only)</h2>
+          <h2>3 · Density (shape only)</h2>
           <p class="explain">The shape of each player's outcome distribution: taller = more
             likely, wider = less predictable. This illustrates the distributional
             differences well, but is <b>less directly useful for roster decisions</b> — the
