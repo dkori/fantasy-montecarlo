@@ -252,25 +252,69 @@ function renderDiff(series) {
   }
   panel.classList.remove('disabled');
   const { x, diff, hiName, loName } = diffSeries(series);
-  const trace = {
-    x, y: diff, mode: 'lines', name: `${hiName} − ${loName}`,
-    line: { color: 'rgb(31,119,180)', width: 2 },
-    fill: 'tozeroy', fillcolor: 'rgba(31,119,180,0.08)',
+  // Map hi/lo back to their palette colors (hi = higher-mean player).
+  const hiIdx = series.find((s) => s.name === hiName).i;
+  const loIdx = series.find((s) => s.name === loName).i;
+  const hiColor = rgb(hiIdx);
+  const loColor = rgb(loIdx);
+
+  // Split the curve into a positive part (hi ahead) and a negative part (lo
+  // ahead), each filled/colored in that player's color. Clamp to 0 on the far
+  // side and keep nulls out so each fill hugs the zero line.
+  const posY = diff.map((d) => (d >= 0 ? d : 0));
+  const negY = diff.map((d) => (d <= 0 ? d : 0));
+
+  const posTrace = {
+    x, y: posY, mode: 'lines', name: `${hiName} ahead`,
+    line: { color: hiColor, width: 2 },
+    fill: 'tozeroy', fillcolor: rgba(hiIdx, 0.15),
+    hoverinfo: 'skip',
+  };
+  const negTrace = {
+    x, y: negY, mode: 'lines', name: `${loName} ahead`,
+    line: { color: loColor, width: 2 },
+    fill: 'tozeroy', fillcolor: rgba(loIdx, 0.15),
+    hoverinfo: 'skip',
+  };
+  // An invisible trace carrying the true signed diff so hover shows the real
+  // value (positive = hi ahead, negative = lo ahead).
+  const hoverTrace = {
+    x, y: diff, mode: 'lines', line: { color: 'rgba(0,0,0,0)', width: 0 },
+    name: `${hiName} − ${loName}`, showlegend: false,
     hovertemplate: '%{x:.0f}th pctile<br>%{y:+.1f} pts<extra>' + hiName + ' − ' + loName + '</extra>',
   };
+
+  // Symmetric y-range so the zero line is always centered and BOTH halves are
+  // visible even when one player strictly dominates (curve never crosses zero).
+  const maxAbs = Math.max(1, ...diff.map((d) => Math.abs(d)));
+  const M = maxAbs * 1.18;  // a little headroom for the labels
+
   const shapes = [{ type: 'line', xref: 'paper', x0: 0, x1: 1, y0: 0, y1: 0,
     line: { color: '#888', width: 1.5 } }];
   [10, 50, 90].forEach((p) => shapes.push({ type: 'line', yref: 'paper', x0: p, x1: p,
     y0: 0, y1: 1, line: { color: '#ccc', width: 1, dash: 'dot' } }));
-  Plotly.newPlot('chart-diff', [trace], {
+
+  // In-panel player captions: higher-mean name in the upper half, lower-mean in
+  // the lower half, centered horizontally, each in the player's color.
+  const annotations = [
+    { x: 50, xref: 'x', y: M * 0.72, yref: 'y', text: `▲ ${hiName} ahead`,
+      showarrow: false, font: { size: 13, color: hiColor },
+      bgcolor: 'rgba(255,255,255,0.65)' },
+    { x: 50, xref: 'x', y: -M * 0.72, yref: 'y', text: `▼ ${loName} ahead`,
+      showarrow: false, font: { size: 13, color: loColor },
+      bgcolor: 'rgba(255,255,255,0.65)' },
+  ];
+
+  Plotly.newPlot('chart-diff', [posTrace, negTrace, hoverTrace], {
     margin: { t: 10, r: 10, b: 72, l: 50 },
     xaxis: { title: 'percentile', range: [0, 100], fixedrange: true },
-    yaxis: { title: `points: ${hiName} − ${loName}`, fixedrange: true },
-    template: 'plotly_white', hovermode: 'x unified', dragmode: false, showlegend: false, shapes,
+    yaxis: { title: `points difference`, range: [-M, M], fixedrange: true },
+    template: 'plotly_white', hovermode: 'x unified', dragmode: false,
+    showlegend: false, shapes, annotations,
   }, PLOTLY_CONFIG);
   document.getElementById('diff-note').textContent =
-    `Positive = ${hiName} (higher mean) ahead at that percentile. ` +
-    `Where it dips below zero, ${loName} actually wins.`;
+    `Above the line (${hiName}'s color) = ${hiName} ahead at that percentile; ` +
+    `below = ${loName} ahead (e.g. a higher floor).`;
 }
 
 function escapeHtml(s) {
