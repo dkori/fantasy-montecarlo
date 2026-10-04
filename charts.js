@@ -152,7 +152,9 @@ function diffSeries(series) {
   }
   const x = la.map((l) => l * 100);
   const diff = hiV.map((v, i) => v - loV[i]);
-  return { x, diff, hiName, loName };
+  // Expose each player's own point total at every percentile so the hover can
+  // show absolute scores (floor/ceiling context), not just the difference.
+  return { x, diff, hiName, loName, hiV, loV };
 }
 
 function interp(x, xs, ys) {

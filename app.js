@@ -260,7 +260,7 @@ function renderDiff(series) {
     return;
   }
   panel.classList.remove('disabled');
-  const { x, diff, hiName, loName } = diffSeries(series);
+  const { x, diff, hiName, loName, hiV, loV } = diffSeries(series);
   // Map hi/lo back to their palette colors (hi = higher-mean player).
   const hiIdx = series.find((s) => s.name === hiName).i;
   const loIdx = series.find((s) => s.name === loName).i;
@@ -288,12 +288,24 @@ function renderDiff(series) {
   // An invisible trace carrying the true signed diff so hover shows the real
   // value (positive = hi ahead, negative = lo ahead). Round the data itself so
   // the x-unified hover box shows clean values (not float noise like 99.900001).
+  // customdata carries each player's OWN point total at that percentile so the
+  // hover gives absolute floor/ceiling context, not just the gap. Points are
+  // rounded to one decimal; the percentile x is rounded to a whole number.
   const hoverTrace = {
     x: x.map((v) => Math.round(v)),
     y: diff.map((v) => Math.round(v * 10) / 10),
+    customdata: hiV.map((v, i) => [
+      Math.round(v * 10) / 10,       // higher-mean player's points
+      Math.round(loV[i] * 10) / 10,  // lower-mean player's points
+    ]),
     mode: 'lines', line: { color: 'rgba(0,0,0,0)', width: 0 },
     name: `${hiName} − ${loName}`, showlegend: false,
-    hovertemplate: '%{x}th pctile<br>%{y:+.1f} pts<extra>' + hiName + ' − ' + loName + '</extra>',
+    hovertemplate:
+      '%{x}th percentile<br>' +
+      hiName + ': %{customdata[0]:.1f} pts<br>' +
+      loName + ': %{customdata[1]:.1f} pts<br>' +
+      'gap: %{y:+.1f} pts (' + hiName + ' − ' + loName + ')' +
+      '<extra></extra>',
   };
 
   // Symmetric y-range so the zero line is always centered and BOTH halves are
@@ -324,9 +336,18 @@ function renderDiff(series) {
     template: 'plotly_white', hovermode: 'x unified', dragmode: false,
     showlegend: false, shapes, annotations,
   }, PLOTLY_CONFIG);
-  document.getElementById('diff-note').textContent =
-    `Above the line (${hiName}'s color) = ${hiName} ahead at that percentile; ` +
-    `below = ${loName} ahead (e.g. a higher floor).`;
+  // Concrete floor/median/ceiling anchors for the two players so the percentile
+  // axis is readable in points. Pull the 10th/50th/90th off the shared grid.
+  const pctAt = (vals, p) => {
+    const idx = x.reduce((best, xv, i) => (Math.abs(xv - p) < Math.abs(x[best] - p) ? i : best), 0);
+    return Math.round(vals[idx]);
+  };
+  const anchors = (vals) => `${pctAt(vals, 10)} / ${pctAt(vals, 50)} / ${pctAt(vals, 90)}`;
+  document.getElementById('diff-note').innerHTML =
+    `Above the line (${escapeHtml(hiName)}'s color) = ${escapeHtml(hiName)} ahead at that ` +
+    `percentile; below = ${escapeHtml(loName)} ahead (e.g. a higher floor). ` +
+    `<br><b>Floor / median / ceiling (10th / 50th / 90th pctile):</b> ` +
+    `${escapeHtml(hiName)} ${anchors(hiV)} pts · ${escapeHtml(loName)} ${anchors(loV)} pts.`;
 }
 
 function escapeHtml(s) {
