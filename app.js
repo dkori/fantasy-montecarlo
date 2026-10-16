@@ -20,7 +20,7 @@ const PLOTLY_CONFIG = {
 };
 
 async function boot() {
-  const res = await fetch('data/demo_week4.json');
+  const res = await fetch('data/demo_week6.json');
   DATA = await res.json();
   // Only players we can actually chart (have a quantile grid).
   NAMES = Object.keys(DATA.players)
@@ -44,6 +44,7 @@ function wireControls() {
   const input = document.getElementById('search');
   const list = document.getElementById('matches');
   const ownerSel = document.getElementById('owner-filter');
+  const sortSel = document.getElementById('sort-mode');
   const trigger = document.getElementById('player-trigger');
   const panel = document.getElementById('player-panel');
 
@@ -57,12 +58,28 @@ function wireControls() {
   opts.push('<option value="__fa__">Free agents</option>');
   ownerSel.innerHTML = opts.join('');
 
-  // Candidate names under the current owner filter.
+  // Order a name list by the current sort mode. "mean" sorts by our projected
+  // mean descending (highest first) — e.g. "Free agents" + mean gives the best
+  // available pickups; ties/missing means fall back to alphabetical.
+  function applySort(names) {
+    if (sortSel && sortSel.value === 'mean') {
+      return names.slice().sort((a, b) => {
+        const ma = DATA.players[a].mean, mb = DATA.players[b].mean;
+        if (mb !== ma) return mb - ma;
+        return a.localeCompare(b);
+      });
+    }
+    return names; // NAMES is already alphabetical
+  }
+
+  // Candidate names under the current owner filter, then ordered by sort mode.
   function candidates() {
     const v = ownerSel.value;
-    if (v === '__all__') return NAMES;
-    if (v === '__fa__') return NAMES.filter((n) => !DATA.players[n].owner);
-    return NAMES.filter((n) => DATA.players[n].owner === v);
+    let base;
+    if (v === '__all__') base = NAMES;
+    else if (v === '__fa__') base = NAMES.filter((n) => !DATA.players[n].owner);
+    else base = NAMES.filter((n) => DATA.players[n].owner === v);
+    return applySort(base);
   }
 
   // Render the full candidate list (filtered by the in-panel search text).
@@ -101,6 +118,7 @@ function wireControls() {
 
   trigger.addEventListener('click', togglePanel);
   ownerSel.addEventListener('change', () => { input.value = ''; if (panel.classList.contains('open')) refreshMatches(); });
+  if (sortSel) sortSel.addEventListener('change', () => { if (panel.classList.contains('open')) refreshMatches(); });
   input.addEventListener('input', refreshMatches);
 
   list.addEventListener('click', (e) => {
@@ -120,7 +138,15 @@ function wireControls() {
 
 function badge(name) {
   const r = DATA.players[name];
-  return r && r.owner ? ` <span class="mini-owner">${escapeHtml(r.owner)}</span>` : '';
+  const parts = [];
+  // When sorting by our mean, surface the mean inline so the descending order
+  // is readable at a glance (e.g. scanning free agents for the best RB pickup).
+  const sortSel = document.getElementById('sort-mode');
+  if (sortSel && sortSel.value === 'mean' && r && typeof r.mean === 'number') {
+    parts.push(`<span class="mini-mean">${r.mean.toFixed(1)}</span>`);
+  }
+  if (r && r.owner) parts.push(`<span class="mini-owner">${escapeHtml(r.owner)}</span>`);
+  return parts.length ? ' ' + parts.join(' ') : '';
 }
 
 function addPlayer(name) {
