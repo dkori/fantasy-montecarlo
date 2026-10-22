@@ -3,10 +3,12 @@
  * and renders 4 charts with explainers + our-mean / Yahoo-proj / owner overlays.
  */
 
-let DATA = null;        // the loaded demo payload
+let DATA = null;        // the loaded demo payload (current week)
 let NAMES = [];         // sorted selectable player names
 let selected = [];      // up to 2 names
 let colorOf = {};       // name -> stable palette slot (0/1) while selected
+let activeScoring = 'half_ppr';  // scoring toggle; default 0.5 PPR (this league)
+let WEEKS = [];         // weeks manifest entries [{week, file}], if present
 
 // Hover stays on (the unified spike line + value tooltip come from the per-chart
 // hovermode:'x unified'); zoom/pan is disabled so a stray drag or scroll on
@@ -20,22 +22,113 @@ const PLOTLY_CONFIG = {
 };
 
 async function boot() {
-  const res = await fetch('data/demo_week6.json');
-  DATA = await res.json();
-  // Only players we can actually chart (have a quantile grid).
-  NAMES = Object.keys(DATA.players)
-    .filter((n) => DATA.players[n].quantiles && DATA.players[n].quantiles.levels.length > 1)
-    .sort();
-  renderMeta();
+  // Prior-week serving via a weeks manifest (weeks.json). Each week is its own
+  // file loaded on demand, so prior weeks add nothing to the default page load.
+  // Falls back to latest.json, then the legacy hardcoded file, for old deploys.
+  let latestFile = 'data/demo_week6.json';
+  try {
+    const man = await (await fetch('data/weeks.json')).json();
+    if (man && Array.isArray(man.weeks) && man.weeks.length) {
+      WEEKS = man.weeks.slice().sort((a, b) => b.week - a.week); // newest first
+      latestFile = 'data/' + (man.latest || WEEKS[0].file);
+    }
+  } catch (e) {
+    try {
+      const ptr = await (await fetch('data/latest.json')).json();
+      if (ptr && ptr.file) latestFile = 'data/' + ptr.file;
+    } catch (e2) {
+      console.warn('no weeks.json/latest.json; using fallback', latestFile);
+    }
+  }
+  populateWeekPicker(latestFile);
+  await loadWeek(latestFile);
   wireControls();
+  wireViewControls();
   render();
+}
+
+function populateWeekPicker(latestFile) {
+  const sel = document.getElementById('week-picker');
+  if (!sel) return;
+  if (!WEEKS.length) { sel.style.display = 'none'; return; }
+  sel.innerHTML = WEEKS.map((w, i) => {
+    const sl = ('data/' + w.file === latestFile);
+    return `<option value="data/${escapeHtml(w.file)}"${sl ? ' selected' : ''}>` +
+      `Week ${w.week}${i === 0 ? ' (latest)' : ''}</option>`;
+  }).join('');
+}
+
+async function loadWeek(dataFile) {
+  const res = await fetch(dataFile);
+  DATA = await res.json();
+  NAMES = Object.keys(DATA.players)
+    .filter((n) => playerHasCurve(DATA.players[n]))
+    .sort();
+  selected = selected.filter((n) => DATA.players[n]);
+  Object.keys(colorOf).forEach((n) => { if (!DATA.players[n]) delete colorOf[n]; });
+  renderMeta();
+}
+
+function playerHasCurve(rec) {
+  const q = scoringField(rec, 'quantiles');
+  return q && q.levels && q.levels.length > 1;
+}
+
+// Distribution field for the ACTIVE scoring, with a flat fallback for weeks
+// produced before multi-scoring (which only have the 0.5-PPR flat fields).
+function scoringField(rec, key) {
+  if (rec && rec.scorings && rec.scorings[activeScoring]
+      && rec.scorings[activeScoring][key] != null) {
+    return rec.scorings[activeScoring][key];
+  }
+  return rec ? rec[key] : undefined;
+}
+
+// Charting view of a record under the active scoring (static fields + the
+// scoring-specific distribution fields).
+function recView(name) {
+  const r = DATA.players[name];
+  if (!r) return null;
+  return {
+    name,
+    owner: r.owner,
+    yahoo_proj: r.yahoo_proj,
+    mean: scoringField(r, 'mean'),
+    median: scoringField(r, 'median'),
+    std: scoringField(r, 'std'),
+    floor_p10: scoringField(r, 'floor_p10'),
+    ceiling_p90: scoringField(r, 'ceiling_p90'),
+    quantiles: scoringField(r, 'quantiles'),
+    histogram: scoringField(r, 'histogram'),
+  };
+}
+
+function wireViewControls() {
+  const weekSel = document.getElementById('week-picker');
+  const scoreSel = document.getElementById('scoring-mode');
+  if (scoreSel) {
+    scoreSel.value = activeScoring;
+    scoreSel.addEventListener('change', () => {
+      activeScoring = scoreSel.value;
+      NAMES = Object.keys(DATA.players).filter((n) => playerHasCurve(DATA.players[n])).sort();
+      render();
+    });
+  }
+  if (weekSel) {
+    weekSel.addEventListener('change', async () => {
+      await loadWeek(weekSel.value);
+      render();
+    });
+  }
 }
 
 function renderMeta() {
   const enriched = DATA.n_enriched;
   const total = DATA.n_players;
+  const scoreLabel = { standard: 'Standard', half_ppr: '0.5 PPR', ppr: 'Full PPR' }[activeScoring]
+    || DATA.scoring;
   document.getElementById('meta').textContent =
-    `${DATA.week_label} · book ${DATA.book} · ${DATA.scoring} · ` +
+    `${DATA.week_label} · book ${DATA.book} · ${scoreLabel} · ` +
     `${total} priced players (${enriched} with Yahoo projection + owner) · ` +
     `league ${DATA.league_season} week ${DATA.league_week}`;
 }
@@ -64,7 +157,8 @@ function wireControls() {
   function applySort(names) {
     if (sortSel && sortSel.value === 'mean') {
       return names.slice().sort((a, b) => {
-        const ma = DATA.players[a].mean, mb = DATA.players[b].mean;
+        const ma = scoringField(DATA.players[a], 'mean');
+        const mb = scoringField(DATA.players[b], 'mean');
         if (mb !== ma) return mb - ma;
         return a.localeCompare(b);
       });
@@ -142,8 +236,9 @@ function badge(name) {
   // When sorting by our mean, surface the mean inline so the descending order
   // is readable at a glance (e.g. scanning free agents for the best RB pickup).
   const sortSel = document.getElementById('sort-mode');
-  if (sortSel && sortSel.value === 'mean' && r && typeof r.mean === 'number') {
-    parts.push(`<span class="mini-mean">${r.mean.toFixed(1)}</span>`);
+  const meanV = scoringField(r, 'mean');
+  if (sortSel && sortSel.value === 'mean' && r && typeof meanV === 'number') {
+    parts.push(`<span class="mini-mean">${meanV.toFixed(1)}</span>`);
   }
   if (r && r.owner) parts.push(`<span class="mini-owner">${escapeHtml(r.owner)}</span>`);
   return parts.length ? ' ' + parts.join(' ') : '';
@@ -193,7 +288,7 @@ function render() {
   if (selected.length === 1) hint.textContent = 'Pick a second player to unlock the difference chart.';
   charts.style.display = 'block';
 
-  const series = selected.map((n) => ({ name: n, rec: DATA.players[n], i: colorOf[n] }));
+  const series = selected.map((n) => ({ name: n, rec: recView(n), i: colorOf[n] }));
   renderCdfStd(series);
   renderDiff(series);
   renderDensity(series);
@@ -203,7 +298,7 @@ function renderChips() {
   const box = document.getElementById('chips');
   box.innerHTML = selected
     .map((n) => {
-      const r = DATA.players[n];
+      const r = recView(n);
       const owner = r.owner ? `<span class="chip-owner">${escapeHtml(r.owner)}</span>` : '<span class="chip-owner fa">free agent</span>';
       const yp = r.yahoo_proj != null ? `Yahoo ${r.yahoo_proj.toFixed(1)}` : 'no Yahoo proj';
       return `<div class="chip">
