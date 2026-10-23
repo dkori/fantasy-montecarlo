@@ -300,10 +300,15 @@ function renderChips() {
     .map((n) => {
       const r = recView(n);
       const owner = r.owner ? `<span class="chip-owner">${escapeHtml(r.owner)}</span>` : '<span class="chip-owner fa">free agent</span>';
-      const yp = r.yahoo_proj != null ? `Yahoo ${r.yahoo_proj.toFixed(1)}` : 'no Yahoo proj';
+      // Yahoo's projection is scraped under this league's scoring (0.5 PPR), so
+      // only show it when the toggle is on 0.5 PPR; it's not comparable under
+      // Standard/Full PPR.
+      const yp = activeScoring === 'half_ppr'
+        ? (r.yahoo_proj != null ? ` · Yahoo ${r.yahoo_proj.toFixed(1)}` : ' · no Yahoo proj')
+        : '';
       return `<div class="chip">
         <span class="chip-name">${escapeHtml(n)}</span>
-        <span class="chip-stat">ours: mean ${r.mean.toFixed(1)} · med ${r.median.toFixed(1)} · ${yp}</span>
+        <span class="chip-stat">ours: mean ${r.mean.toFixed(1)} · med ${r.median.toFixed(1)}${yp}</span>
         ${owner}
         <button data-name="${escapeHtml(n)}" class="chip-x">×</button>
       </div>`;
