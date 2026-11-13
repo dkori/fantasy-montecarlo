@@ -50,6 +50,15 @@
     .chip-stat { font-size: 12px; color: var(--muted); }
     .chip-owner { font-size: 11px; color: #0a7d33; }
     .chip-owner.fa { color: var(--muted); font-style: italic; }
+    /* Intra-week projection movement vs the week's first refresh. */
+    .chip-delta { font-size: 11px; font-weight: 600; }
+    .chip-delta.up { color: #0a7d33; }
+    .chip-delta.down { color: #b4231f; }
+    .chip-delta.flat { color: var(--muted); font-weight: 400; }
+    /* A small up/down marker next to a player's name in the pick list. */
+    .mini-delta { font-size: 10px; font-weight: 700; margin-left: 4px; }
+    .mini-delta.up { color: #0a7d33; }
+    .mini-delta.down { color: #b4231f; }
     .chip-x { align-self: flex-end; margin-top: -22px; border: none; background: none;
       font-size: 18px; cursor: pointer; color: var(--muted); line-height: 1; }
     #hint { color: var(--muted); font-size: 14px; padding: 24px 0; }
